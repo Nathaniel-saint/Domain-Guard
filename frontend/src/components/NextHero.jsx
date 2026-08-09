@@ -29,7 +29,7 @@ function NextHero() {
             </div>
                 <div className="promp-start">
                     <h3>Start protecting your digital assets today.</h3>
-                    <Link to='/'>Sign up for Free</Link>
+                    <Link to='/register'>Sign up for Free</Link>
                 </div>
         </div>
     </>

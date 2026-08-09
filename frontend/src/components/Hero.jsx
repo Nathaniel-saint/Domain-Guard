@@ -13,7 +13,7 @@ function Hero() {
                 </h1>
                 <p className="hero-para">Securely manage your entire domain portfolio, store passwords, and get automatic expiry alerts, all in one place.</p>
                 <div className="hero-links">
-                    <Link className='get-link' to='/'>Get Started For Free</Link>
+                    <Link className='get-link' to='/register'>Get Started For Free</Link>
                     <Link className='demo-link' to='/'>Watch a Demo</Link>
                 </div>
             </div>

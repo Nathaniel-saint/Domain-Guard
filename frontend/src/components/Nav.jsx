@@ -12,8 +12,8 @@ function Nav() {
                 <h3 className='name' >Domain Guard</h3>
             </Link>
             <nav className='nav-links'>
-                <Link className='s-in' to='/'>Sign In</Link>
-                <Link className='s-up' to='/'>Sign Up</Link>
+                <Link className='s-in' to='/register/signin'>Sign In</Link>
+                <Link className='s-up' to='/register'>Sign Up</Link>
             </nav>
         </nav>
     </>
