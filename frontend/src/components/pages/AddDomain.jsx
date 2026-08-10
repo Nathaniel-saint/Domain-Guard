@@ -7,7 +7,6 @@ function AddDomain({ isOpen, onClose, onAddDomain }) {
     domainName: '',
     registrar: '',
     expiryDate: '',
-    notes: ''
   })
 
   if (!isOpen) return null
@@ -22,7 +21,7 @@ function AddDomain({ isOpen, onClose, onAddDomain }) {
   const handleSubmit = (e) => {
     e.preventDefault()
     onAddDomain(formData)
-    setFormData({ domainName: '', registrar: '', expiryDate: '', notes: '' })
+    setFormData({ domainName: '', registrar: '', expiryDate: '',})
     onClose()
   }
 
@@ -69,17 +68,6 @@ function AddDomain({ isOpen, onClose, onAddDomain }) {
               value={formData.expiryDate}
               onChange={handleChange}
               required
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Notes / Tags (Optional)</label>
-            <textarea
-              name="notes"
-              placeholder="e.g. Primary production server domain"
-              rows="3"
-              value={formData.notes}
-              onChange={handleChange}
             />
           </div>
 
