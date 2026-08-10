@@ -1,29 +1,57 @@
-import React, { useState } from 'react'
-import { FiX } from 'react-icons/fi'
-import './AddDomain.css'
+import React, { useState } from "react";
+import { FiX } from "react-icons/fi";
+import "./AddDomain.css";
+import axios from "axios";
 
 function AddDomain({ isOpen, onClose, onAddDomain }) {
   const [formData, setFormData] = useState({
-    domainName: '',
-    registrar: '',
-    expiryDate: '',
-  })
+    domainName: "",
+    registrar: "",
+    expiryDate: "",
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
-    })
-  }
+      [e.target.name]: e.target.value,
+    });
+  };
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    onAddDomain(formData)
-    setFormData({ domainName: '', registrar: '', expiryDate: '',})
-    onClose()
-  }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const payload = {
+        domain_name: formData.domainName,
+        registrar: formData.registrar,
+        expiry_date: formData.expiryDate,
+      };
+
+      const response = await axios.post(
+        "http://localhost:8000/domain/api/",
+        payload,
+      );
+
+      if (onAddDomain) {
+        onAddDomain(response.data);
+      }
+
+      setFormData({ domainName: "", registrar: "", expiryDate: "" });
+      onClose();
+    } catch (err) {
+      setError(
+        err.response?.data?.detail || "Failed to add domain. Please try again.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -34,6 +62,8 @@ function AddDomain({ isOpen, onClose, onAddDomain }) {
             <FiX />
           </button>
         </div>
+
+        {error && <div className="error-message">{error}</div>}
 
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-group">
@@ -72,17 +102,26 @@ function AddDomain({ isOpen, onClose, onAddDomain }) {
           </div>
 
           <div className="modal-actions">
-            <button type="button" className="cancel-btn" onClick={onClose}>
+            <button
+              type="button"
+              className="cancel-btn"
+              onClick={onClose}
+              disabled={loading}
+            >
               Cancel
             </button>
-            <button type="submit" className="submit-domain-btn">
-              Add Domain
+            <button
+              type="submit"
+              className="submit-domain-btn"
+              disabled={loading}
+            >
+              {loading ? "Adding..." : "Add Domain"}
             </button>
           </div>
         </form>
       </div>
     </div>
-  )
+  );
 }
 
-export default AddDomain
+export default AddDomain;

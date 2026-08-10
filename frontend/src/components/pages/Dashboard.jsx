@@ -1,35 +1,48 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { CiSearch, CiFilter } from 'react-icons/ci'
 import { FiGlobe, FiClock, FiAlertTriangle, FiPlus, FiDownload, FiChevronLeft, FiChevronRight } from 'react-icons/fi'
 import './Dashboard.css'
 import AddDomain from './AddDomain'
 import DomainDetails from './DomainDetails'
+import axios from 'axios'
 
 function Dashboard() {
   const [searchTerm, setSearchTerm] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedDomain, setSelectedDomain] = useState(null)
+  
+  const [domains, setDomains] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 5
 
-  const initialDomains = [
-    { id: 1, name: 'example-ventures.com', registrar: 'GoDaddy', expiry: 'Oct 25, 2026', status: 'Expired' },
-    { id: 2, name: 'myportfolio.io', registrar: 'Namecheap', expiry: 'Nov 15, 2026', status: 'Expiring Soon' },
-    { id: 3, name: 'techsolutions.net', registrar: 'Google Domains', expiry: 'Jan 10, 2027', status: 'Active' },
-    { id: 4, name: 'blogspace.co', registrar: 'Cloudflare', expiry: 'Dec 01, 2026', status: 'Expiring Soon' },
-    { id: 5, name: 'innovate-app.ai', registrar: 'Namecheap', expiry: 'Feb 20, 2027', status: 'Active' },
-    { id: 6, name: 'cloudstack.org', registrar: 'AWS Route53', expiry: 'Mar 14, 2027', status: 'Active' },
-    { id: 7, name: 'nextgen-labs.com', registrar: 'GoDaddy', expiry: 'Apr 02, 2027', status: 'Active' },
-    { id: 8, name: 'securestore.shop', registrar: 'Namecheap', expiry: 'Oct 30, 2026', status: 'Expiring Soon' },
-  ]
+  useEffect(() => {
+    fetchDomains()
+  }, [])
 
-  const [domains, setDomains] = useState(initialDomains)
+  const fetchDomains = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await axios.get('http://localhost:8000/domain/api/')
+      setDomains(response.data)
+    } catch (err) {
+      setError('Failed to fetch domain portfolio from server.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
-  const filteredDomains = domains.filter((item) =>
-    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.registrar.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredDomains = domains.filter((item) => {
+    const name = item.domain_name || item.name || ''
+    const registrar = item.registrar || ''
+    return (
+      name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      registrar.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  })
 
   const totalPages = Math.ceil(filteredDomains.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
@@ -43,14 +56,7 @@ function Dashboard() {
   }
 
   const handleAddDomainSubmit = (newDomain) => {
-    const createdDomain = {
-      id: Date.now(),
-      name: newDomain.domainName,
-      registrar: newDomain.registrar,
-      expiry: newDomain.expiryDate,
-      status: 'Active'
-    }
-    setDomains([createdDomain, ...domains])
+    setDomains((prev) => [newDomain, ...prev])
   }
 
   return (
@@ -81,7 +87,7 @@ function Dashboard() {
             <span className="metric-icon warning-icon"><FiClock /></span>
           </div>
           <h3 className="metric-value">
-            {domains.filter(d => d.status === 'Expiring Soon').length}
+            {domains.filter(d => (d.status || 'ACTIVE') === 'EXPIRING_SOON' || d.status === 'Expiring Soon').length}
           </h3>
           <span className="metric-sub text-warning">Action required</span>
         </div>
@@ -92,7 +98,7 @@ function Dashboard() {
             <span className="metric-icon danger-icon"><FiAlertTriangle /></span>
           </div>
           <h3 className="metric-value">
-            {domains.filter(d => d.status === 'Expired').length}
+            {domains.filter(d => (d.status || 'ACTIVE') === 'EXPIRED' || d.status === 'Expired').length}
           </h3>
           <span className="metric-sub text-danger">Action required</span>
         </div>
@@ -104,15 +110,7 @@ function Dashboard() {
           <div className="table-actions">
             <div className="search-box">
               <CiSearch className="search-icon" />
-              <input 
-                type="text" 
-                placeholder="Search domains..." 
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value)
-                  setCurrentPage(1)
-                }}
-              />
+              <input type="text" placeholder="Search domains..." value={searchTerm} onChange={(e) => {setSearchTerm(e.target.value), setCurrentPage(1) }} />
             </div>
             <button className="secondary-btn"><CiFilter /> Status</button>
             <button className="secondary-btn"><CiFilter /> Registrar</button>
@@ -133,28 +131,39 @@ function Dashboard() {
               </tr>
             </thead>
             <tbody>
-              {currentDomains.length > 0 ? (
-                currentDomains.map((item) => (
-                  <tr key={item.id}>
-                    <td><input type="checkbox" /></td>
-                    <td className="domain-name">{item.name}</td>
-                    <td>{item.registrar}</td>
-                    <td>{item.expiry}</td>
-                    <td>
-                      <span className={`status-pill ${item.status.toLowerCase().replace(/\s+/g, '-')}`}>
-                        {item.status}
-                      </span>
-                    </td>
-                    <td>
-                      <button className="manage-btn" onClick={() => setSelectedDomain(item)}>
-                        Manage
-                      </button>
-                    </td>
-                  </tr>
-                ))
+              {loading ? (
+                <tr>
+                  <td colSpan="6" className="no-data">Loading domain portfolio...</td>
+                </tr>
+              ) : error ? (
+                <tr>
+                  <td colSpan="6" className="no-data">{error}</td>
+                </tr>
+              ) : currentDomains.length > 0 ? (
+                currentDomains.map((item) => {
+                  const statusDisplay = item.status || 'ACTIVE'
+                  return (
+                    <tr key={item.id}>
+                      <td><input type="checkbox" /></td>
+                      <td className="domain-name">{item.domain_name || item.name}</td>
+                      <td>{item.registrar}</td>
+                      <td>{item.expiry_date || item.expiry}</td>
+                      <td>
+                        <span className={`status-pill ${statusDisplay.toLowerCase().replace(/_/g, '-')}`}>
+                          {statusDisplay.replace(/_/g, ' ')}
+                        </span>
+                      </td>
+                      <td>
+                        <button className="manage-btn" onClick={() => setSelectedDomain(item)}>
+                          Manage
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })
               ) : (
                 <tr>
-                  <td colSpan="6" className="no-data">No domains match your search.</td>
+                  <td colSpan="6" className="no-data">No domains found.</td>
                 </tr>
               )}
             </tbody>

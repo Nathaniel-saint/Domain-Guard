@@ -1,6 +1,7 @@
 import React from 'react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import axios from 'axios'
 import './SignIn.css'
 
 function SignIn() {
@@ -11,11 +12,15 @@ function SignIn() {
     });
 
     const handleChange = e =>{
-
+        setForm({
+            ...form,
+            [e.target.name]: e.target.value
+        })
     }
 
     const handleSubmit = e =>{
-        
+        e.preventDefault()
+
     }
 
   return (

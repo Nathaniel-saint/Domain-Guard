@@ -11,7 +11,7 @@
     flex-direction: column;
     width: 100%;
     max-width: 24rem; 
-    gap: 0.5rem;
+    /* gap: 0.5rem; */
 }
 
 .form-head-p {
@@ -104,4 +104,20 @@
 .form-wrapper span a:hover {
     color: #3323CC;
     text-decoration: underline;
+}
+
+.error-msg{
+    color: red;
+    font-size: 0.6rem;
+}
+
+.succ-msg{
+    color: green;
+    background-color: rgb(132, 247, 138);
+    padding: 0.5rem 1rem;
+    width: 100%;
+    border-radius: 0.8rem;
+    border: 1px green solid;
+    justify-content: center;
+    text-align: center;
 }

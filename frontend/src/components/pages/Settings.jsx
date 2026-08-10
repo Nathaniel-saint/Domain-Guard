@@ -12,13 +12,11 @@ function Setting() {
 
   return (
     <div className="settings-container">
-      {/* Header */}
       <header className="settings-header">
         <h2>Settings</h2>
         <p className="breadcrumb">Home / Settings</p>
       </header>
 
-      {/* Tabs Navigation */}
       <div className="settings-tabs">
         <button 
           className={`tab-btn ${activeTab === 'profile' ? 'active' : ''}`}
@@ -46,7 +44,6 @@ function Setting() {
         </button>
       </div>
 
-      {/* Tab Panels */}
       <div className="settings-content">
         {activeTab === 'profile' && (
           <section className="settings-panel">
