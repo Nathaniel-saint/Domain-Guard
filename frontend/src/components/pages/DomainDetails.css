@@ -289,3 +289,15 @@
   font-size: 0.875rem;
   color: #64748b;
 }
+
+.logout-btn {
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}

@@ -97,7 +97,9 @@ function DomainDetails({ isOpen, onClose, domain }) {
     try {
       const payload = {
         domain: domain.id,
-        ...formData,
+        registrar_username: formData.registrar_username,
+        registrar_password: formData.registrar_password,
+        api_secret_key: formData.api_secret_key,
       };
 
       let response;
@@ -113,7 +115,18 @@ function DomainDetails({ isOpen, onClose, domain }) {
       setCredentials(response.data);
       setIsEditing(false);
     } catch (err) {
-      setError("Failed to save credentials. Please try again.");
+      console.error("Save credentials error payload:", err.response?.data);
+
+      const apiError = err.response?.data;
+      if (apiError && typeof apiError === "object") {
+        const firstField = Object.keys(apiError)[0];
+        const detail = Array.isArray(apiError[firstField])
+          ? apiError[firstField][0]
+          : apiError[firstField];
+        setError(`${firstField}: ${detail}`);
+      } else {
+        setError("Failed to save credentials. Please try again.");
+      }
     } finally {
       setSaving(false);
     }

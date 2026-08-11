@@ -1,5 +1,11 @@
 // src/context/AuthContext.jsx
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useRef,
+} from "react";
 import axios from "axios";
 
 const AuthContext = createContext();
@@ -16,12 +22,17 @@ export const AuthProvider = ({ children }) => {
   const [accessToken, setAccessToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Inject Bearer token
+  const tokenRef = useRef(accessToken);
+  useEffect(() => {
+    tokenRef.current = accessToken;
+  }, [accessToken]);
+
+  // Request Interceptor: Attach current token dynamically
   useEffect(() => {
     const requestInterceptor = api.interceptors.request.use(
       (config) => {
-        if (accessToken) {
-          config.headers.Authorization = `Bearer ${accessToken}`;
+        if (tokenRef.current) {
+          config.headers.Authorization = `Bearer ${tokenRef.current}`;
         }
         return config;
       },
@@ -29,9 +40,9 @@ export const AuthProvider = ({ children }) => {
     );
 
     return () => api.interceptors.request.eject(requestInterceptor);
-  }, [accessToken]);
+  }, []);
 
-  // Handle Token Refresh on 401
+  // Response Interceptor: Refresh token automatically on 401
   useEffect(() => {
     const responseInterceptor = api.interceptors.response.use(
       (response) => response,
@@ -46,14 +57,21 @@ export const AuthProvider = ({ children }) => {
           originalRequest._retry = true;
 
           try {
-            const res = await api.post("auth/api/token/refresh/");
+            const res = await axios.post(
+              "http://localhost:8000/auth/api/token/refresh/",
+              {},
+              { withCredentials: true },
+            );
+
             const newAccessToken = res.data.access;
             setAccessToken(newAccessToken);
+            tokenRef.current = newAccessToken;
 
             originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
             return api(originalRequest);
           } catch (refreshError) {
             setAccessToken(null);
+            tokenRef.current = null;
             return Promise.reject(refreshError);
           }
         }
@@ -64,13 +82,20 @@ export const AuthProvider = ({ children }) => {
     return () => api.interceptors.response.eject(responseInterceptor);
   }, []);
 
+  // Initial mount check: Restore session using HttpOnly cookie
   useEffect(() => {
     const refreshAccessToken = async () => {
       try {
-        const res = await api.post("auth/api/token/refresh/");
+        const res = await axios.post(
+          "http://localhost:8000/auth/api/token/refresh/",
+          {},
+          { withCredentials: true },
+        );
         setAccessToken(res.data.access);
+        tokenRef.current = res.data.access;
       } catch (err) {
         setAccessToken(null);
+        tokenRef.current = null;
       } finally {
         setLoading(false);
       }
@@ -81,6 +106,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = (token) => {
     setAccessToken(token);
+    tokenRef.current = token;
   };
 
   const logout = async () => {
@@ -90,6 +116,7 @@ export const AuthProvider = ({ children }) => {
       console.error(err);
     } finally {
       setAccessToken(null);
+      tokenRef.current = null;
     }
   };
 
