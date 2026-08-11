@@ -1,63 +1,102 @@
-import React, { useState, useEffect } from 'react'
-import { CiSearch, CiFilter } from 'react-icons/ci'
-import { FiGlobe, FiClock, FiAlertTriangle, FiPlus, FiDownload, FiChevronLeft, FiChevronRight } from 'react-icons/fi'
-import './Dashboard.css'
-import AddDomain from './AddDomain'
-import DomainDetails from './DomainDetails'
-import axios from 'axios'
+// src/components/pages/Dashboard.jsx
+import React, { useState, useEffect } from "react";
+import { CiSearch, CiFilter } from "react-icons/ci";
+import {
+  FiGlobe,
+  FiClock,
+  FiAlertTriangle,
+  FiPlus,
+  FiDownload,
+  FiChevronLeft,
+  FiChevronRight,
+} from "react-icons/fi";
+import "./Dashboard.css";
+import AddDomain from "./AddDomain";
+import DomainDetails from "./DomainDetails";
+import { api, useAuth } from "../context/AuthContext";
 
 function Dashboard() {
-  const [searchTerm, setSearchTerm] = useState('')
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [selectedDomain, setSelectedDomain] = useState(null)
-  
-  const [domains, setDomains] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const { accessToken } = useAuth();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedDomain, setSelectedDomain] = useState(null);
 
-  const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 5
+  const [domains, setDomains] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   useEffect(() => {
-    fetchDomains()
-  }, [])
+    if (accessToken) {
+      fetchDomains();
+    }
+  }, [accessToken]);
 
   const fetchDomains = async () => {
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
     try {
-      const response = await axios.get('http://localhost:8000/domain/api/')
-      setDomains(response.data)
+      const response = await api.get("domain/api/");
+      const fetchedDomains = response.data.results || response.data;
+      setDomains(Array.isArray(fetchedDomains) ? fetchedDomains : []);
     } catch (err) {
-      setError('Failed to fetch domain portfolio from server.')
+      console.error("Fetch Domains Error:", err);
+      setError("Failed to fetch domain portfolio from server.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
+
+  const getDomainStatus = (domain) => {
+    if (domain.status && domain.status !== "ACTIVE") {
+      return domain.status;
+    }
+
+    const expiryStr = domain.expiry_date || domain.expiry;
+    if (!expiryStr) return "ACTIVE";
+
+    const today = new Date();
+    const expiry = new Date(expiryStr);
+    const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) return "EXPIRED";
+    if (diffDays <= 30) return "EXPIRING_SOON";
+    return "ACTIVE";
+  };
+
+  const expiringSoonCount = domains.filter(
+    (d) => getDomainStatus(d) === "EXPIRING_SOON",
+  ).length;
+
+  const expiredCount = domains.filter(
+    (d) => getDomainStatus(d) === "EXPIRED",
+  ).length;
 
   const filteredDomains = domains.filter((item) => {
-    const name = item.domain_name || item.name || ''
-    const registrar = item.registrar || ''
+    const name = item.domain_name || item.name || "";
+    const registrar = item.registrar || "";
     return (
       name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       registrar.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  })
+    );
+  });
 
-  const totalPages = Math.ceil(filteredDomains.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const currentDomains = filteredDomains.slice(startIndex, endIndex)
+  const totalPages = Math.ceil(filteredDomains.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentDomains = filteredDomains.slice(startIndex, endIndex);
 
   const handlePageChange = (page) => {
     if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page)
+      setCurrentPage(page);
     }
-  }
+  };
 
-  const handleAddDomainSubmit = (newDomain) => {
-    setDomains((prev) => [newDomain, ...prev])
-  }
+  const handleAddDomainSubmit = () => {
+    fetchDomains();
+  };
 
   return (
     <div className="dash-container">
@@ -75,31 +114,33 @@ function Dashboard() {
         <div className="metric-card">
           <div className="metric-header">
             <span className="metric-title">Total Domains</span>
-            <span className="metric-icon primary-icon"><FiGlobe /></span>
+            <span className="metric-icon primary-icon">
+              <FiGlobe />
+            </span>
           </div>
           <h3 className="metric-value">{domains.length}</h3>
-          <span className="metric-sub text-positive">+5 this month</span>
+          <span className="metric-sub text-positive">Active portfolio</span>
         </div>
 
         <div className="metric-card">
           <div className="metric-header">
             <span className="metric-title">Expiring Soon (30 days)</span>
-            <span className="metric-icon warning-icon"><FiClock /></span>
+            <span className="metric-icon warning-icon">
+              <FiClock />
+            </span>
           </div>
-          <h3 className="metric-value">
-            {domains.filter(d => (d.status || 'ACTIVE') === 'EXPIRING_SOON' || d.status === 'Expiring Soon').length}
-          </h3>
+          <h3 className="metric-value">{expiringSoonCount}</h3>
           <span className="metric-sub text-warning">Action required</span>
         </div>
 
         <div className="metric-card">
           <div className="metric-header">
             <span className="metric-title">Expired</span>
-            <span className="metric-icon danger-icon"><FiAlertTriangle /></span>
+            <span className="metric-icon danger-icon">
+              <FiAlertTriangle />
+            </span>
           </div>
-          <h3 className="metric-value">
-            {domains.filter(d => (d.status || 'ACTIVE') === 'EXPIRED' || d.status === 'Expired').length}
-          </h3>
+          <h3 className="metric-value">{expiredCount}</h3>
           <span className="metric-sub text-danger">Action required</span>
         </div>
       </section>
@@ -110,11 +151,25 @@ function Dashboard() {
           <div className="table-actions">
             <div className="search-box">
               <CiSearch className="search-icon" />
-              <input type="text" placeholder="Search domains..." value={searchTerm} onChange={(e) => {setSearchTerm(e.target.value), setCurrentPage(1) }} />
+              <input
+                type="text"
+                placeholder="Search domains..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
+              />
             </div>
-            <button className="secondary-btn"><CiFilter /> Status</button>
-            <button className="secondary-btn"><CiFilter /> Registrar</button>
-            <button className="secondary-btn"><FiDownload /> Export CSV</button>
+            <button className="secondary-btn">
+              <CiFilter /> Status
+            </button>
+            <button className="secondary-btn">
+              <CiFilter /> Registrar
+            </button>
+            <button className="secondary-btn">
+              <FiDownload /> Export CSV
+            </button>
           </div>
         </div>
 
@@ -122,7 +177,9 @@ function Dashboard() {
           <table className="domain-table">
             <thead>
               <tr>
-                <th><input type="checkbox" /></th>
+                <th>
+                  <input type="checkbox" />
+                </th>
                 <th>Domain Name</th>
                 <th>Registrar</th>
                 <th>Expiry Date</th>
@@ -133,37 +190,52 @@ function Dashboard() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="6" className="no-data">Loading domain portfolio...</td>
+                  <td colSpan="6" className="no-data">
+                    Loading domain portfolio...
+                  </td>
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan="6" className="no-data">{error}</td>
+                  <td colSpan="6" className="no-data">
+                    {error}
+                  </td>
                 </tr>
               ) : currentDomains.length > 0 ? (
-                currentDomains.map((item) => {
-                  const statusDisplay = item.status || 'ACTIVE'
+                currentDomains.map((item, index) => {
+                  const statusDisplay = getDomainStatus(item);
                   return (
-                    <tr key={item.id}>
-                      <td><input type="checkbox" /></td>
-                      <td className="domain-name">{item.domain_name || item.name}</td>
+                    <tr key={item.id || item.pk || index}>
+                      <td>
+                        <input type="checkbox" />
+                      </td>
+                      <td className="domain-name">
+                        {item.domain_name || item.name}
+                      </td>
                       <td>{item.registrar}</td>
                       <td>{item.expiry_date || item.expiry}</td>
                       <td>
-                        <span className={`status-pill ${statusDisplay.toLowerCase().replace(/_/g, '-')}`}>
-                          {statusDisplay.replace(/_/g, ' ')}
+                        <span
+                          className={`status-pill ${statusDisplay.toLowerCase().replace(/_/g, "-")}`}
+                        >
+                          {statusDisplay.replace(/_/g, " ")}
                         </span>
                       </td>
                       <td>
-                        <button className="manage-btn" onClick={() => setSelectedDomain(item)}>
+                        <button
+                          className="manage-btn"
+                          onClick={() => setSelectedDomain(item)}
+                        >
                           Manage
                         </button>
                       </td>
                     </tr>
-                  )
+                  );
                 })
               ) : (
                 <tr>
-                  <td colSpan="6" className="no-data">No domains found.</td>
+                  <td colSpan="6" className="no-data">
+                    No domains found.
+                  </td>
                 </tr>
               )}
             </tbody>
@@ -172,31 +244,34 @@ function Dashboard() {
 
         <div className="pagination-wrapper">
           <span className="pagination-info">
-            Showing {filteredDomains.length > 0 ? startIndex + 1 : 0} to{' '}
-            {Math.min(endIndex, filteredDomains.length)} of {filteredDomains.length} results
+            Showing {filteredDomains.length > 0 ? startIndex + 1 : 0} to{" "}
+            {Math.min(endIndex, filteredDomains.length)} of{" "}
+            {filteredDomains.length} results
           </span>
 
           <div className="pagination-controls">
-            <button 
-              className="page-nav-btn" 
+            <button
+              className="page-nav-btn"
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
             >
               <FiChevronLeft /> Previous
             </button>
 
-            {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((page) => (
-              <button
-                key={page}
-                className={`page-num-btn ${currentPage === page ? 'active' : ''}`}
-                onClick={() => handlePageChange(page)}
-              >
-                {page}
-              </button>
-            ))}
+            {Array.from({ length: totalPages }, (_, idx) => idx + 1).map(
+              (page) => (
+                <button
+                  key={page}
+                  className={`page-num-btn ${currentPage === page ? "active" : ""}`}
+                  onClick={() => handlePageChange(page)}
+                >
+                  {page}
+                </button>
+              ),
+            )}
 
-            <button 
-              className="page-nav-btn" 
+            <button
+              className="page-nav-btn"
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages || totalPages === 0}
             >
@@ -206,19 +281,19 @@ function Dashboard() {
         </div>
       </section>
 
-      <AddDomain 
-        isOpen={isModalOpen} 
+      <AddDomain
+        isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onAddDomain={handleAddDomainSubmit}
       />
 
-      <DomainDetails 
-        isOpen={!!selectedDomain} 
-        onClose={() => setSelectedDomain(null)} 
+      <DomainDetails
+        isOpen={!!selectedDomain}
+        onClose={() => setSelectedDomain(null)}
         domain={selectedDomain}
       />
     </div>
-  )
+  );
 }
 
-export default Dashboard
+export default Dashboard;
