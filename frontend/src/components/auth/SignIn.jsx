@@ -25,8 +25,9 @@ function SignIn() {
         password: form.password,
       });
 
-      login(response.data.access);
-      navigate("/dashboard");
+      // Pass full response object containing both access and refresh tokens
+      login(response.data);
+      navigate("/dashboard", { replace: true });
     } catch (err) {
       setError(err.response?.data?.detail || "Invalid email or password.");
     } finally {

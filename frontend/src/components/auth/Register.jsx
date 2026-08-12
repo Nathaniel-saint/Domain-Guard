@@ -45,9 +45,10 @@ function Register() {
 
       const signinRedirect = await api.post("auth/api/login/", signInData);
 
-      login(signinRedirect.data.access);
+      // ✅ Pass full response payload containing both access and refresh tokens
+      login(signinRedirect.data);
 
-      navigate("/dashboard");
+      navigate("/dashboard", { replace: true });
     } catch (error) {
       setErr(error.response?.data || "Network Error or Server unavailable");
       console.error("error", error);

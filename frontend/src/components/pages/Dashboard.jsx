@@ -1,5 +1,4 @@
-// src/components/pages/Dashboard.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { CiSearch, CiFilter } from "react-icons/ci";
 import {
   FiGlobe,
@@ -18,6 +17,8 @@ import { api, useAuth } from "../context/AuthContext";
 function Dashboard() {
   const { accessToken } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [registrarFilter, setRegistrarFilter] = useState("ALL");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDomain, setSelectedDomain] = useState(null);
 
@@ -38,9 +39,23 @@ function Dashboard() {
     setLoading(true);
     setError(null);
     try {
-      const response = await api.get("domain/api/");
-      const fetchedDomains = response.data.results || response.data;
-      setDomains(Array.isArray(fetchedDomains) ? fetchedDomains : []);
+      let allDomains = [];
+      let nextUrl = "domain/api/";
+
+      while (nextUrl) {
+        const endpoint = nextUrl.replace(/^https?:\/\/[^\/]+/, "");
+        const response = await api.get(endpoint);
+
+        if (response.data.results) {
+          allDomains = [...allDomains, ...response.data.results];
+          nextUrl = response.data.next;
+        } else {
+          allDomains = Array.isArray(response.data) ? response.data : [];
+          nextUrl = null;
+        }
+      }
+
+      setDomains(allDomains);
     } catch (err) {
       console.error("Fetch Domains Error:", err);
       setError("Failed to fetch domain portfolio from server.");
@@ -66,27 +81,42 @@ function Dashboard() {
     return "ACTIVE";
   };
 
-  const expiringSoonCount = domains.filter(
-    (d) => getDomainStatus(d) === "EXPIRING_SOON",
-  ).length;
+  const expiringSoonCount = useMemo(
+    () => domains.filter((d) => getDomainStatus(d) === "EXPIRING_SOON").length,
+    [domains],
+  );
 
-  const expiredCount = domains.filter(
-    (d) => getDomainStatus(d) === "EXPIRED",
-  ).length;
+  const expiredCount = useMemo(
+    () => domains.filter((d) => getDomainStatus(d) === "EXPIRED").length,
+    [domains],
+  );
 
-  const filteredDomains = domains.filter((item) => {
-    const name = item.domain_name || item.name || "";
-    const registrar = item.registrar || "";
-    return (
-      name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      registrar.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  });
+  const uniqueRegistrars = useMemo(
+    () => [
+      "ALL",
+      ...Array.from(new Set(domains.map((d) => d.registrar).filter(Boolean))),
+    ],
+    [domains],
+  );
+
+  const filteredDomains = useMemo(() => {
+    return domains.filter((item) => {
+      const status = getDomainStatus(item);
+      const name = item.domain_name || item.name || "";
+      const registrar = item.registrar || "";
+
+      const matchesSearch =
+        name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        registrar.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === "ALL" || status === statusFilter;
+      const matchesRegistrar =
+        registrarFilter === "ALL" || registrar === registrarFilter;
+
+      return matchesSearch && matchesStatus && matchesRegistrar;
+    });
+  }, [domains, searchTerm, statusFilter, registrarFilter]);
 
   const totalPages = Math.ceil(filteredDomains.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentDomains = filteredDomains.slice(startIndex, endIndex);
 
   const handlePageChange = (page) => {
     if (page >= 1 && page <= totalPages) {
@@ -96,7 +126,39 @@ function Dashboard() {
 
   const handleAddDomainSubmit = () => {
     fetchDomains();
+    setCurrentPage(1);
   };
+
+  const handleExportCSV = () => {
+    if (filteredDomains.length === 0) return;
+
+    const headers = ["Domain Name", "Registrar", "Expiry Date", "Status"];
+    const rows = filteredDomains.map((item) => [
+      `"${item.domain_name || item.name || ""}"`,
+      `"${item.registrar || ""}"`,
+      `"${item.expiry_date || item.expiry || ""}"`,
+      `"${getDomainStatus(item)}"`,
+    ]);
+
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute(
+      "download",
+      `domain_portfolio_${new Date().toISOString().slice(0, 10)}.csv`,
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentDomains = filteredDomains.slice(startIndex, endIndex);
 
   return (
     <div className="dash-container">
@@ -161,13 +223,47 @@ function Dashboard() {
                 }}
               />
             </div>
-            <button className="secondary-btn">
-              <CiFilter /> Status
-            </button>
-            <button className="secondary-btn">
-              <CiFilter /> Registrar
-            </button>
-            <button className="secondary-btn">
+
+            <div className="filter-select-wrapper">
+              <CiFilter className="filter-icon" />
+              <select
+                className="filter-select"
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="ACTIVE">Active</option>
+                <option value="EXPIRING_SOON">Expiring Soon</option>
+                <option value="EXPIRED">Expired</option>
+              </select>
+            </div>
+
+            <div className="filter-select-wrapper">
+              <CiFilter className="filter-icon" />
+              <select
+                className="filter-select"
+                value={registrarFilter}
+                onChange={(e) => {
+                  setRegistrarFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+              >
+                {uniqueRegistrars.map((reg) => (
+                  <option key={reg} value={reg}>
+                    {reg === "ALL" ? "All Registrars" : reg}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              className="secondary-btn"
+              onClick={handleExportCSV}
+              disabled={filteredDomains.length === 0}
+            >
               <FiDownload /> Export CSV
             </button>
           </div>
@@ -205,9 +301,7 @@ function Dashboard() {
                   const statusDisplay = getDomainStatus(item);
                   return (
                     <tr key={item.id || item.pk || index}>
-                      <td>
-                        <input type="checkbox" />
-                      </td>
+                      <td>{Math.floor(Math.random(1, 1000) * 1000)}</td>
                       <td className="domain-name">
                         {item.domain_name || item.name}
                       </td>
@@ -215,7 +309,9 @@ function Dashboard() {
                       <td>{item.expiry_date || item.expiry}</td>
                       <td>
                         <span
-                          className={`status-pill ${statusDisplay.toLowerCase().replace(/_/g, "-")}`}
+                          className={`status-pill ${statusDisplay
+                            .toLowerCase()
+                            .replace(/_/g, "-")}`}
                         >
                           {statusDisplay.replace(/_/g, " ")}
                         </span>
@@ -253,7 +349,7 @@ function Dashboard() {
             <button
               className="page-nav-btn"
               onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
+              disabled={currentPage === 1 || loading}
             >
               <FiChevronLeft /> Previous
             </button>
@@ -262,8 +358,11 @@ function Dashboard() {
               (page) => (
                 <button
                   key={page}
-                  className={`page-num-btn ${currentPage === page ? "active" : ""}`}
+                  className={`page-num-btn ${
+                    currentPage === page ? "active" : ""
+                  }`}
                   onClick={() => handlePageChange(page)}
+                  disabled={loading}
                 >
                   {page}
                 </button>
@@ -273,7 +372,9 @@ function Dashboard() {
             <button
               className="page-nav-btn"
               onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages || totalPages === 0}
+              disabled={
+                currentPage === totalPages || totalPages === 0 || loading
+              }
             >
               Next <FiChevronRight />
             </button>

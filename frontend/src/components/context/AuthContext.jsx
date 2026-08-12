@@ -1,4 +1,3 @@
-// src/context/AuthContext.jsx
 import React, {
   createContext,
   useContext,
@@ -12,14 +11,15 @@ const AuthContext = createContext();
 
 export const api = axios.create({
   baseURL: "http://localhost:8000/",
-  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
 export const AuthProvider = ({ children }) => {
-  const [accessToken, setAccessToken] = useState(null);
+  const [accessToken, setAccessToken] = useState(() =>
+    localStorage.getItem("access_token"),
+  );
   const [loading, setLoading] = useState(true);
 
   const tokenRef = useRef(accessToken);
@@ -27,7 +27,6 @@ export const AuthProvider = ({ children }) => {
     tokenRef.current = accessToken;
   }, [accessToken]);
 
-  // Request Interceptor: Attach current token dynamically
   useEffect(() => {
     const requestInterceptor = api.interceptors.request.use(
       (config) => {
@@ -42,7 +41,6 @@ export const AuthProvider = ({ children }) => {
     return () => api.interceptors.request.eject(requestInterceptor);
   }, []);
 
-  // Response Interceptor: Refresh token automatically on 401
   useEffect(() => {
     const responseInterceptor = api.interceptors.response.use(
       (response) => response,
@@ -55,23 +53,33 @@ export const AuthProvider = ({ children }) => {
           !originalRequest.url.includes("auth/api/token/refresh/")
         ) {
           originalRequest._retry = true;
+          const refreshToken = localStorage.getItem("refresh_token");
+
+          if (!refreshToken) {
+            handleLocalLogout();
+            return Promise.reject(error);
+          }
 
           try {
             const res = await axios.post(
               "http://localhost:8000/auth/api/token/refresh/",
-              {},
-              { withCredentials: true },
+              { refresh: refreshToken },
             );
 
             const newAccessToken = res.data.access;
+
+            if (res.data.refresh) {
+              localStorage.setItem("refresh_token", res.data.refresh);
+            }
+
+            localStorage.setItem("access_token", newAccessToken);
             setAccessToken(newAccessToken);
             tokenRef.current = newAccessToken;
 
             originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
             return api(originalRequest);
           } catch (refreshError) {
-            setAccessToken(null);
-            tokenRef.current = null;
+            handleLocalLogout();
             return Promise.reject(refreshError);
           }
         }
@@ -82,41 +90,58 @@ export const AuthProvider = ({ children }) => {
     return () => api.interceptors.response.eject(responseInterceptor);
   }, []);
 
-  // Initial mount check: Restore session using HttpOnly cookie
   useEffect(() => {
-    const refreshAccessToken = async () => {
-      try {
-        const res = await axios.post(
-          "http://localhost:8000/auth/api/token/refresh/",
-          {},
-          { withCredentials: true },
-        );
-        setAccessToken(res.data.access);
-        tokenRef.current = res.data.access;
-      } catch (err) {
-        setAccessToken(null);
-        tokenRef.current = null;
-      } finally {
-        setLoading(false);
+    const checkAuthAndRefresh = async () => {
+      const refreshToken = localStorage.getItem("refresh_token");
+
+      if (refreshToken) {
+        try {
+          const res = await axios.post(
+            "http://localhost:8000/auth/api/token/refresh/",
+            { refresh: refreshToken },
+          );
+
+          localStorage.setItem("access_token", res.data.access);
+          if (res.data.refresh) {
+            localStorage.setItem("refresh_token", res.data.refresh);
+          }
+
+          setAccessToken(res.data.access);
+          tokenRef.current = res.data.access;
+        } catch (err) {
+          handleLocalLogout();
+        }
+      } else {
+        handleLocalLogout();
       }
+      setLoading(false);
     };
 
-    refreshAccessToken();
+    checkAuthAndRefresh();
   }, []);
 
-  const login = (token) => {
-    setAccessToken(token);
-    tokenRef.current = token;
+  const handleLocalLogout = () => {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    setAccessToken(null);
+    tokenRef.current = null;
+  };
+
+  const login = (tokens) => {
+    localStorage.setItem("access_token", tokens.access);
+    localStorage.setItem("refresh_token", tokens.refresh);
+    setAccessToken(tokens.access);
+    tokenRef.current = tokens.access;
   };
 
   const logout = async () => {
+    const refreshToken = localStorage.getItem("refresh_token");
     try {
-      await api.post("auth/api/logout/");
+      await api.post("auth/api/logout/", { refresh: refreshToken });
     } catch (err) {
-      console.error(err);
+      console.error("Server logout failed:", err);
     } finally {
-      setAccessToken(null);
-      tokenRef.current = null;
+      handleLocalLogout();
     }
   };
 
