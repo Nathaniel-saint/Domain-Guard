@@ -45,7 +45,6 @@ function Register() {
 
       const signinRedirect = await api.post("auth/api/login/", signInData);
 
-      // ✅ Pass full response payload containing both access and refresh tokens
       login(signinRedirect.data);
 
       navigate("/dashboard", { replace: true });

@@ -10,7 +10,7 @@ import axios from "axios";
 const AuthContext = createContext();
 
 export const api = axios.create({
-  baseURL: "http://localhost:8000/",
+  baseURL: "https://domain-guard-api.onrender.com/",
   headers: {
     "Content-Type": "application/json",
   },
