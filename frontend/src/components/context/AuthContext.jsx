@@ -62,7 +62,7 @@ export const AuthProvider = ({ children }) => {
 
           try {
             const res = await axios.post(
-              "http://localhost:8000/auth/api/token/refresh/",
+              "https://domain-guard-api.onrender.com/auth/api/token/refresh/",
               { refresh: refreshToken },
             );
 
@@ -97,7 +97,7 @@ export const AuthProvider = ({ children }) => {
       if (refreshToken) {
         try {
           const res = await axios.post(
-            "http://localhost:8000/auth/api/token/refresh/",
+            "https://domain-guard-api.onrender.com/auth/api/token/refresh/",
             { refresh: refreshToken },
           );
 
