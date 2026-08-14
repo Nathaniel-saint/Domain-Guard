@@ -10,7 +10,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)
-ALLOWED_HOSTS = []
+
+# 1. FIXED: Added your Render domain here to stop the 400 Bad Request error
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "://onrender.com",
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -64,7 +70,6 @@ DATABASES = {
         'PASSWORD': os.getenv('DB_PASSWORD'),
         'HOST': os.getenv('DB_HOST'),
         'PORT': os.getenv('DB_PORT'),
-        # Optional: Keeps connection alive for better performance
         'CONN_MAX_AGE': 60, 
     }
 }
@@ -88,7 +93,6 @@ MAILERS = {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
 }
-
 
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
@@ -117,3 +121,9 @@ JWT_COOKIE_SAMESITE = 'None'
 JWT_COOKIE_SECURE = True
 
 AUTH_USER_MODEL = 'user.CustomUser'
+
+# 2. ADDED: Allows secure data forms to submit over HTTPS from Vercel to Render
+CSRF_TRUSTED_ORIGINS = [
+    "https://domain-guard-delta.vercel.app",
+    "https://://onrender.com",
+]
