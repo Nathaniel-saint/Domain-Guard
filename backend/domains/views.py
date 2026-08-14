@@ -11,7 +11,6 @@ from .serializers import DomainCredentialSerializer, DomainSerializer
 
 
 class CookieTokenRefreshSerializer(TokenRefreshSerializer):
-    # Allow empty payload from frontend since token lives in HttpOnly cookie
     refresh = serializers.CharField(required=False, allow_blank=True)
 
     def validate(self, attrs):
