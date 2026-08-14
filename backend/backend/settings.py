@@ -11,11 +11,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-# 1. FIXED: Added your Render domain here to stop the 400 Bad Request error
+# 1. Force Django to trust Render's secure reverse-proxy headers
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# 2. Update your ALLOWED_HOSTS to explicitly include Render's proxy routers
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
-    "://onrender.com",
+    "domain-guard-api.onrender.com",
+    ".onrender.com",  # 👈 Allows any internal subdomains on Render to connect
 ]
 
 INSTALLED_APPS = [

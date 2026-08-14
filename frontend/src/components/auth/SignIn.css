@@ -87,6 +87,7 @@
 .error-msg {
   color: red;
 }
+
 .form.sign-in > p a:hover {
   color: #3323cc;
   text-decoration: underline;
