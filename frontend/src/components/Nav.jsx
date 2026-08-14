@@ -16,7 +16,7 @@ function Nav() {
             Sign In
           </Link>
           <Link className="s-up" to="/register">
-            Sign Up
+            Register
           </Link>
         </nav>
       </nav>
