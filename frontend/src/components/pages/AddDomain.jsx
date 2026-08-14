@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { FiX } from "react-icons/fi";
 import "./AddDomain.css";
-import axios from "axios";
+import { api } from "../context/AuthContext";
 
 function AddDomain({ isOpen, onClose, onAddDomain }) {
   const [formData, setFormData] = useState({
@@ -33,10 +33,7 @@ function AddDomain({ isOpen, onClose, onAddDomain }) {
         expiry_date: formData.expiryDate,
       };
 
-      const response = await axios.post(
-        "http://localhost:8000/domain/api/",
-        payload,
-      );
+      const response = await api.post("domain/api/", payload);
 
       if (onAddDomain) {
         onAddDomain(response.data);

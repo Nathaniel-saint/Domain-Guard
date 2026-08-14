@@ -9,35 +9,35 @@ import Register from "./components/auth/Register";
 import SignIn from "./components/auth/SignIn";
 import DashLayout from "./components/pages/DashLayout";
 import Notifications from "./components/pages/Notifications";
-import Settings from "./components/pages/Settings";
 import Dashboard from "./components/pages/Dashboard";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
   return (
-    <>
-      <BrowserRouter>
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <>
-                <Nav /> <Hero /> <NextHero /> <Footer />{" "}
-              </>
-            }
-          />
-          <Route path="/register" element={<AuthLayout />}>
-            <Route index element={<Register />} />
-            <Route path="signin" element={<SignIn />} />
-          </Route>
+    <BrowserRouter>
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <>
+              <Nav /> <Hero /> <NextHero /> <Footer />
+            </>
+          }
+        />
 
+        <Route element={<AuthLayout />}>
+          <Route path="/register" element={<Register />} />
+          <Route path="/signin" element={<SignIn />} />
+        </Route>
+
+        <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashLayout />}>
             <Route index element={<Dashboard />} />
             <Route path="notification" element={<Notifications />} />
-            {/* <Route path='setting' element={<Settings />} /> */}
           </Route>
-        </Routes>
-      </BrowserRouter>
-    </>
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
 }
 
