@@ -42,7 +42,7 @@ function SignIn() {
           <p className="sign-in-p">Access your domain portfolio securely</p>
         </div>
 
-        {error && <p className="error-msg">{error}</p>}
+        {error && <p className="error-msg-in">{error}</p>}
 
         <label className="email">Email</label>
         <input

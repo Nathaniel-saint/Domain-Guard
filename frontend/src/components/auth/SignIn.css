@@ -11,7 +11,7 @@
   flex-direction: column;
   align-items: flex-start;
   text-align: left;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.5rem;
 }
 
 .sigin-head-p h1 {
@@ -71,7 +71,7 @@
   background-color: #133590;
 }
 
-.form.sign-in > p {
+.sign-in-p {
   text-align: center;
   font-size: 0.875rem;
   color: #475569;
@@ -84,8 +84,10 @@
   transition: color 0.2s ease;
 }
 
-.error-msg {
+.error-msg-in {
   color: red;
+  font-size: 0.8rem;
+  margin-bottom: 0.8rem;
 }
 
 .form.sign-in > p a:hover {
